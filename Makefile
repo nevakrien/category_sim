@@ -8,7 +8,7 @@ SRC = test_category.c
 
 all: $(TARGET)
 
-$(TARGET): $(SRC)
+$(TARGET): $(SRC) category.h utils.h
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
 
 run: all

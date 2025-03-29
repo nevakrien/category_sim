@@ -1,5 +1,3 @@
-// test_category.c
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -10,6 +8,7 @@
 typedef struct {
 	ID id;
 	int expected_magic;
+	int alive;
 } ID_Tracker;
 
 static inline int is_valid_id(Category* cat, ID id) {
@@ -19,8 +18,7 @@ static inline int is_valid_id(Category* cat, ID id) {
 
 void test_category_safety() {
 	Category cat = {0};
-	ID_Tracker live_ids[N] = {0};
-	int live_count = 0;
+	ID_Tracker ids[N] = {0};
 
 	srand((unsigned int)time(NULL));
 
@@ -29,14 +27,16 @@ void test_category_safety() {
 		Element* e = allocate_elem(&cat);
 		int magic = i ^ 0xABCD1234;
 		e->type = (const Type*)(uintptr_t)magic;
-		live_ids[live_count++] = (ID_Tracker){ e->id, magic };
+		ids[i].id = e->id;
+		ids[i].expected_magic = magic;
+		ids[i].alive = 1;
 	}
 
 	// Randomly delete ~half
-	for (int i = 0; i < live_count; ++i) {
+	for (int i = 0; i < N; ++i) {
 		if (rand() % 2 == 0) {
-			delete_elem(&cat, live_ids[i].id);
-			live_ids[i].id.global_id = -1;
+			delete_elem(&cat, ids[i].id);
+			ids[i].alive = 0;
 		}
 	}
 
@@ -47,9 +47,10 @@ void test_category_safety() {
 	}
 
 	// Validate all still-live IDs
-	for (int i = 0; i < live_count; ++i) {
-		ID id = live_ids[i].id;
-		if (id.global_id == -1) continue;
+	for (int i = 0; i < N; ++i) {
+		if (!ids[i].alive) continue;
+
+		ID id = ids[i].id;
 
 		if (!is_valid_id(&cat, id)) {
 			fprintf(stderr, "Error: ID at slot %u is no longer valid!\n", id.slot);
@@ -58,15 +59,14 @@ void test_category_safety() {
 
 		Element* e = &cat.elements.data[id.slot];
 		int stored = (int)(uintptr_t)e->type;
-		if (stored != live_ids[i].expected_magic) {
+		if (stored != ids[i].expected_magic) {
 			fprintf(stderr, "Memory corruption! Expected %x, got %x at slot %u\n",
-				live_ids[i].expected_magic, stored, id.slot);
+				ids[i].expected_magic, stored, id.slot);
 			exit(1);
 		}
 	}
 
 	free_category(&cat);
-
 	printf("All tests passed ✅\n");
 }
 

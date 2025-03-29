@@ -7,7 +7,7 @@
 #include "utils.h"
 
 typedef struct {
-	int32_t global_id;
+	uint32_t global_id;
 	uint32_t slot;
 } ID;
 
@@ -52,9 +52,18 @@ static inline Element* allocate_elem(Category* cat) {
 	return &cat->elements.data[id.slot];
 }
 
+//this should only be used when it is expceted that the slot is free.
+//it is here to allow undo to work
+static inline Element* revive_elem(Category* cat,Element ref){
+	Element* elem = &cat->elements.data[ref.id.slot];
+	ASSERT(elem->id.slot ==0);
+	*elem = ref;
+	return elem;
+}
+
 static inline void delete_elem(Category* cat,ID id) {
 	APPEND(&cat->free_list,id.slot);
-	cat->elements.data[id.slot].id.global_id = -1;
+	cat->elements.data[id.slot].id = (ID){0};
 }
 
 static inline void free_category(Category* cat) {
