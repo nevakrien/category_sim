@@ -73,7 +73,7 @@ static inline Element* revive_elem(Category* cat,Element ref){
 }
 
 static inline void delete_elem(Category* cat,ID id) {
-	ASSERT(id.global_id >0 && 0<=cat->elements.data[id.slot].id.slot);
+	ASSERT(id.global_id >0 && 0<=cat->elements.data[id.slot].id.slot && 0<cat->elements.data[id.slot].id.global_id);
 	APPEND(&cat->free_list,id.slot);
 	cat->elements.data[id.slot].id = (ID){.slot = -1,.global_id = -1};
 }
