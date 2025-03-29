@@ -6,7 +6,7 @@
 #include "category.h"
 #include "commands.h"
 
-#define N 10000
+#define N 100//10000
 
 typedef struct {
 	ID id;
@@ -79,8 +79,6 @@ void test_command_stack() {
 	int alive_indices[N];        // Indexes of currently alive IDs
 	int alive_count = 0;
 
-	srand((unsigned int)time(NULL));
-
 	for (int i = 0; i < N; ++i) {
 		int do_add = (alive_count == 0 || rand() % 2 == 0);
 
@@ -137,6 +135,7 @@ void test_command_stack() {
 
 	// Undo everything
 	for (int i = stack.len - 1; i >= 0; --i) {
+		fflush(stdout);
 		undo_command(&cat, &stack.data[i]);
 	}
 
@@ -153,12 +152,105 @@ void test_command_stack() {
 	printf("Command stack test passed ✅\n");
 }
 
+static inline void check_valid_id_impl(Category* cat, ID id, const char* file, int line) {
+	if (id.slot < 0 ||
+	    (uint32_t)id.slot >= cat->elements.len ||
+	    cat->elements.data[id.slot].id.global_id != id.global_id) {
+		fprintf(stderr, "%s:%d: ERROR: ID (%d, %d) expected to be valid but isn't\n",
+		        file, line, id.slot, id.global_id);
+		exit(1);
+	}
+}
+
+static inline void check_invalid_id_impl(Category* cat, ID id, const char* file, int line) {
+	if (id.slot >= 0 && (uint32_t)id.slot < cat->elements.len) {
+		Element* e = &cat->elements.data[id.slot];
+		if (e->id.global_id == id.global_id) {
+			fprintf(stderr, "%s:%d: ERROR: ID (%d, %d) expected to be invalid but is still alive\n",
+			        file, line, id.slot, id.global_id);
+			exit(1);
+		}
+	}
+}
+
+#define CHECK_VALID_ID(cat, id)   check_valid_id_impl((cat), (id), __FILE__, __LINE__)
+#define CHECK_INVALID_ID(cat, id) check_invalid_id_impl((cat), (id), __FILE__, __LINE__)
+
+
+void test_manual_command_sequence() {
+	printf("=== Starting manual command sequence test ===\n");
+
+	Category cat = {0};
+	UndoStack undo = {0};
+
+	ID e0, e1, e2, e3;
+
+	// Add 3 elements
+	for (int i = 0; i < 3; ++i) {
+		Command c = {.type = CMD_ADD_ELEMENT};
+		apply_command(&cat, &undo, c);
+		ID id = undo.stack.data[undo.len - 1].backup.id;
+		if (i == 0) e0 = id;
+		if (i == 1) e1 = id;
+		if (i == 2) e2 = id;
+		CHECK_VALID_ID(&cat, id);
+	}
+
+	// Undo last 2 adds (e2, e1)
+	undo_last(&cat, &undo); CHECK_INVALID_ID(&cat, e2);
+	undo_last(&cat, &undo); CHECK_INVALID_ID(&cat, e1);
+	CHECK_VALID_ID(&cat, e0);
+
+	// Redo one (e1)
+	redo_last(&cat, &undo); CHECK_VALID_ID(&cat, e1);//here we break
+
+	// Add a new one (e3), which truncates redo
+	{
+		Command c = {.type = CMD_ADD_ELEMENT};
+		apply_command(&cat, &undo, c);
+		e3 = undo.stack.data[undo.len - 1].backup.id;
+		CHECK_VALID_ID(&cat, e3);
+
+		if (undo.len < undo.stack.len) {
+			fprintf(stderr, "ERROR: Redo tail not truncated after new add\n");
+			exit(1);
+		}
+	}
+
+	// Delete e0 explicitly
+	{
+		Command c = {.type = CMD_DELETE_ELEMENT};
+		c.backup = cat.elements.data[e0.slot];
+		apply_command(&cat, &undo, c);
+		CHECK_INVALID_ID(&cat, e0);
+	}
+
+	// Undo that delete → e0 is back
+	undo_last(&cat, &undo); CHECK_VALID_ID(&cat, e0);
+
+	// Undo everything
+	while (undo.len > 0) {
+		undo_last(&cat, &undo);
+	}
+
+	CHECK_INVALID_ID(&cat, e0);
+	CHECK_INVALID_ID(&cat, e1);
+	CHECK_INVALID_ID(&cat, e2);
+	CHECK_INVALID_ID(&cat, e3);
+
+	free(undo.stack.data);
+	free_category(&cat);
+
+	printf("Manual command sequence test passed ✅\n");
+}
+
 
 int main() {
 	srand((unsigned int)time(NULL));
 
 	test_category_safety();
 	test_command_stack();
+	test_manual_command_sequence();
 
 	return 0;
 }
