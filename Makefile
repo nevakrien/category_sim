@@ -4,15 +4,19 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g2 -fsanitize=address
 
 TARGET = test_category
-SRC = test_category.c
+SRC = test_category.c commands.c
+OBJ = $(SRC:.c=.o)
 
 all: $(TARGET)
 
-$(TARGET): $(SRC) category.h utils.h
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 run: all
 	./$(TARGET)
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(OBJ)

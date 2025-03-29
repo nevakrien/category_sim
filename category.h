@@ -1,7 +1,10 @@
 /**
- * this module is representing an infinity category
+ * this module is representing an infinity Category
  * things are allocated in memory as tight as we can make them
  */
+
+#ifndef CATEGORY_H
+#define CATEGORY_H
 
 #include <stdint.h>
 #include "utils.h"
@@ -48,7 +51,7 @@ static inline Element* allocate_elem(Category* cat) {
 	Element* ans = &cat->elements.data[id.slot];
 
 	//make sure we are writing to an empty slot
-	ASSERT(ans->id.slot<=0);
+	ASSERT(ans->id.slot<=0 && ans->id.global_id<=0);
 	ans->id = id;
 
 	return ans;
@@ -73,3 +76,5 @@ static inline void free_category(Category* cat) {
     free(cat->free_list.data);
     *cat = (Category){0}; // optional: zero out everything
 }
+
+#endif //CATEGORY_H
