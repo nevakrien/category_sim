@@ -35,7 +35,7 @@ void test_category_safety() {
 
 	// Randomly delete ~half
 	for (int i = 0; i < N; ++i) {
-		if (rand() % 2 == 0) {
+		if (rand() % 2 == 0 && ids[i].alive) {
 			delete_elem(&cat, ids[i].id);
 			ids[i].alive = 0;
 		}
