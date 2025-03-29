@@ -1,7 +1,7 @@
 # Makefile
 
 CC = gcc
-CFLAGS = -Wall -Wextra -g2 #-fsanitize=address
+CFLAGS = -Wall -Wextra -g2 -fsanitize=address
 
 TARGET = test_category
 SRC = test_category.c commands.c
@@ -12,7 +12,7 @@ all: $(TARGET)
 $(TARGET): $(OBJ) 
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
 
-%.o: %.c commands.h category.h
+%.o: %.c commands.h category.h utils.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 run: all
