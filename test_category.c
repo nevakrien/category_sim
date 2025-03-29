@@ -75,11 +75,15 @@ void test_command_stack() {
 	Category cat = {0};
 	CommandStack stack = {0};
 
+	stack.capacity = N;
+	stack.data = null_check(calloc(N,sizeof(Command)));
+
 	ID_Tracker ids[N] = {0};     // All IDs
 	int alive_indices[N];        // Indexes of currently alive IDs
 	int alive_count = 0;
 
 	for (int i = 0; i < N; ++i) {
+		// srand(rand() ^ i);
 		int do_add = (alive_count == 0 || rand() % 2 == 0);
 
 		if (do_add) {
@@ -115,6 +119,28 @@ void test_command_stack() {
 			tracker->alive = 0;
 		}
 
+		// Command cmd = {.type = CMD_DUMP_ALL};
+		// do_command(&cat, &cmd);
+		// APPEND(&stack, cmd);		
+
+		// Validate that all positive global_ids are unique
+		{
+			for (uint32_t i = 0; i < cat.elements.len; ++i) {
+				Element* e = &cat.elements.data[i];
+				int32_t gid = e->id.global_id;
+				if (gid > 0) {
+					for (uint32_t j = 0; j < i; ++j) {
+						if (cat.elements.data[j].id.global_id == gid) {
+							fprintf(stderr, "Duplicate global_id %d found at slots %u and %u\n",
+							        gid, j, i);
+							exit(1);
+						}
+					}
+				}
+			}
+		}
+
+
 		// Validate current state
 		for (int j = 0; j < N; ++j) {
 			if (!ids[j].alive) continue;
@@ -135,7 +161,6 @@ void test_command_stack() {
 
 	// Undo everything
 	for (int i = stack.len - 1; i >= 0; --i) {
-		fflush(stdout);
 		undo_command(&cat, &stack.data[i]);
 	}
 
@@ -150,6 +175,8 @@ void test_command_stack() {
 	free(stack.data);
 	free_category(&cat);
 	printf("Command stack test passed ✅\n");
+	fflush(stdout);
+
 }
 
 static inline void check_valid_id_impl(Category* cat, ID id, const char* file, int line) {

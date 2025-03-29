@@ -64,7 +64,7 @@ static inline void* null_check(void* p){
 #define ENSURE_CAPACITY(arr) do {\
     if ((arr)->len > (arr)->capacity) {\
         size_t old_capacity = (arr)->capacity; \
-        (arr)->capacity = 1 + 2 * (arr)->len; \
+        (arr)->capacity =  2 * (arr)->len; \
         void* new_data = null_check(realloc((arr)->data, sizeof(*(arr)->data) * (arr)->capacity)); \
         /* zero out the newly added portion */ \
         memset((char*)new_data + sizeof(*(arr)->data) * old_capacity, 0, \

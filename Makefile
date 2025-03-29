@@ -1,7 +1,7 @@
 # Makefile
 
 CC = gcc
-CFLAGS = -Wall -Wextra -g2 -fsanitize=address
+CFLAGS = -Wall -Wextra -O2 -fsanitize=address
 
 TARGET = test_category
 SRC = test_category.c commands.c

@@ -7,7 +7,8 @@
 // For now, we define a simple command enum and structure
 typedef enum {
     CMD_ADD_ELEMENT,
-    CMD_DELETE_ELEMENT
+    CMD_DELETE_ELEMENT,
+    CMD_DUMP_ALL,
 } CommandType;
 
 typedef struct {

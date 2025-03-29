@@ -23,6 +23,12 @@ typedef struct{
 	ID id;
 }Element;
 
+static inline void print_elem(const Element* elem){
+	printf("[%d]",elem->id.global_id);
+	// printf("%s [%d]",elem->type->name,elem->id.global_id);
+}
+
+
 DEFINE_VECTOR_TYPE(Element,ElemArray);
 DEFINE_VECTOR_TYPE(uint32_t,U32Array);
 
@@ -76,5 +82,6 @@ static inline void free_category(Category* cat) {
     free(cat->free_list.data);
     *cat = (Category){0}; // optional: zero out everything
 }
+
 
 #endif //CATEGORY_H

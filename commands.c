@@ -1,11 +1,27 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "commands.h"
 
+bool needs_redo(CommandType type){
+    switch (type){
+        case CMD_ADD_ELEMENT:
+        case CMD_DELETE_ELEMENT:
+            return true;
+        case CMD_DUMP_ALL:
+            return false;
+    };
+
+    return true;//never reached
+}
+
 void apply_command(Category* cat, UndoStack* undo_stack, Command command){
-    undo_stack->stack.len = undo_stack->len; // truncate redo history
-    APPEND(&undo_stack->stack, command);
-    undo_stack->len = undo_stack->stack.len;
+    if(needs_redo(command.type)){
+        undo_stack->stack.len = undo_stack->len; // truncate redo history
+        APPEND(&undo_stack->stack, command);
+        undo_stack->len = undo_stack->stack.len;
+    }
+    
     do_command(cat, &undo_stack->stack.data[undo_stack->len - 1]);
 }
 
@@ -39,6 +55,17 @@ void do_command(Category* cat, Command* command) {
             delete_elem(cat, id);
             break;
         }
+
+        case CMD_DUMP_ALL:
+            puts("DUMPING:");
+            for(size_t i = 0;i<cat->elements.len;i++){
+                const Element elem = cat->elements.data[i];
+                if(elem.id.global_id>0){
+                    print_elem(&elem);
+                    putchar('\n');
+                }
+            }
+            break;
     }
 }
 
@@ -58,5 +85,8 @@ void undo_command(Category* cat, Command* command) {
             revive_elem(cat, command->backup);
             break;
         }
+
+        case CMD_DUMP_ALL:
+            break;
     }
 }
