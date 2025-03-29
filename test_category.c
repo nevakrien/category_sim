@@ -6,7 +6,7 @@
 #include "category.h"
 #include "commands.h"
 
-#define N 100//10000
+#define N 10000
 
 typedef struct {
 	ID id;
@@ -178,7 +178,7 @@ static inline void check_invalid_id_impl(Category* cat, ID id, const char* file,
 
 
 void test_manual_command_sequence() {
-	printf("=== Starting manual command sequence test ===\n");
+	// printf("=== Starting manual command sequence test ===\n");
 
 	Category cat = {0};
 	UndoStack undo = {0};
