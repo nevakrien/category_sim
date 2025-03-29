@@ -12,7 +12,7 @@ typedef struct {
 } ID_Tracker;
 
 static inline int is_valid_id(Category* cat, ID id) {
-	if (id.slot >= cat->elements.len) return 0;
+	if (id.slot >= (int32_t)cat->elements.len) return 0;
 	return cat->elements.data[id.slot].id.global_id == id.global_id;
 }
 

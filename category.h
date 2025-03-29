@@ -7,8 +7,8 @@
 #include "utils.h"
 
 typedef struct {
-	uint32_t global_id;
-	uint32_t slot;
+	int32_t global_id;
+	int32_t slot;
 } ID;
 
 typedef struct {
@@ -45,25 +45,27 @@ static inline Element* allocate_elem(Category* cat) {
 	}
 
 	id.global_id = ++cat->global_id;
+	Element* ans = &cat->elements.data[id.slot];
 
-	// Write the ID into the element for validation purposes
-	cat->elements.data[id.slot].id = id;
+	//make sure we are writing to an empty slot
+	ASSERT(ans->id.slot<=0);
+	ans->id = id;
 
-	return &cat->elements.data[id.slot];
+	return ans;
 }
 
 //this should only be used when it is expceted that the slot is free.
 //it is here to allow undo to work
 static inline Element* revive_elem(Category* cat,Element ref){
 	Element* elem = &cat->elements.data[ref.id.slot];
-	ASSERT(elem->id.slot ==0);
+	ASSERT(elem->id.slot ==-1);
 	*elem = ref;
 	return elem;
 }
 
 static inline void delete_elem(Category* cat,ID id) {
 	APPEND(&cat->free_list,id.slot);
-	cat->elements.data[id.slot].id = (ID){0};
+	cat->elements.data[id.slot].id = (ID){.slot = -1,.global_id = -1};
 }
 
 static inline void free_category(Category* cat) {
