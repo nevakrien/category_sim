@@ -4,16 +4,12 @@
 #include "utils.h"
 #include "category.h"
 
-// For now, we define a simple command enum and structure
-typedef enum {
-    CMD_ADD_ELEMENT,
-    CMD_DELETE_ELEMENT,
-    CMD_DUMP_ALL,
-} CommandType;
 
 typedef struct {
-    CommandType type;
-    Element backup; // used for undoing delete or revive
+    void* data;
+    void (*do_command)(Category* cat, void* data);
+    void (*undo_command)(Category* cat, void* data);
+    void (*destroy)(void* data);
 }Command;
 
 DEFINE_VECTOR_TYPE(Command,CommandStack);
@@ -23,8 +19,10 @@ typedef struct {
 	size_t len;
 } UndoStack;
 
-void do_command(Category* cat, Command* command);
-void undo_command(Category* cat, Command* command);
+void free_undo_stack(UndoStack* undos);
+
+Command make_raw_delete_command(ID id);
+Command make_raw_add_command();
 
 void apply_command(Category* cat,UndoStack* stack, Command command);
 void undo_last(Category* cat,UndoStack* stack);

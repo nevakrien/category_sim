@@ -9,28 +9,42 @@
 #include <stdint.h>
 #include "utils.h"
 
-typedef struct {
-	int32_t global_id;
+//should be 1 register
+typedef struct __attribute__((aligned(8))) ID {
 	int32_t slot;
+	int32_t global_id;
 } ID;
 
-typedef struct {
-	char* name;//owned
-}Type;
 
-typedef struct{
-	const Type* type;
-	ID id;
-}Element;
+// DEFINE_VECTOR_TYPE(void*,AnyVector);
 
-static inline void print_elem(const Element* elem){
-	printf("[%d]",elem->id.global_id);
-	// printf("%s [%d]",elem->type->name,elem->id.global_id);
-}
-
-
+typedef struct Element Element;
 DEFINE_VECTOR_TYPE(Element,ElemArray);
 DEFINE_VECTOR_TYPE(uint32_t,U32Array);
+
+
+typedef struct Type{
+	char* name;//owned
+	// ElemArray memebers;
+}Type;
+
+
+struct Element{
+	const Type* type;
+	void* data;
+	ID id;
+};
+
+typedef struct Arrow{
+	ID source;
+	ID target;
+}Arrow;
+
+static inline void print_elem(const Element* elem){
+	// printf("[%d]",elem->id.global_id);
+	ASSERT(elem->type);
+	printf("%s [%d]",elem->type->name,elem->id.global_id);
+}
 
 typedef struct {
 	uint32_t global_id;
@@ -40,7 +54,17 @@ typedef struct {
 
 }Category;
 
-//this function allways returns a non null ID to a new elemnt
+static inline Element* get_elem(Category* cat,ID id){
+	ASSERT((size_t)id.slot<cat->elements.len);
+	Element* ans = &cat->elements.data[id.slot];
+	ASSERT(ans->id.slot==id.slot);
+	if(ans->id.global_id!=id.global_id)
+		return NULL;
+	return ans;
+}
+
+
+//this function allways returns a non null ID to a new element
 //note that this pointer is invalidated by the next allocation
 static inline Element* allocate_elem(Category* cat) {
 	ID id;
@@ -63,7 +87,7 @@ static inline Element* allocate_elem(Category* cat) {
 	return ans;
 }
 
-//this should only be used when it is expceted that the slot is free.
+//this should only be used when it is expected that the slot is free.
 //it is here to allow undo to work
 static inline Element* revive_elem(Category* cat,Element ref){
 	Element* elem = &cat->elements.data[ref.id.slot];

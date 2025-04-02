@@ -27,7 +27,7 @@ void test_category_safety() {
 	for (int i = 0; i < N; ++i) {
 		Element* e = allocate_elem(&cat);
 		int magic = i ^ 0xABCD1234;
-		e->type = (const Type*)(uintptr_t)magic;
+		e->data = (void*)(uintptr_t)magic;
 		ids[i].id = e->id;
 		ids[i].expected_magic = magic;
 		ids[i].alive = 1;
@@ -44,7 +44,7 @@ void test_category_safety() {
 	// Allocate another N/2
 	for (int i = 0; i < N / 2; ++i) {
 		Element* e = allocate_elem(&cat);
-		e->type = (const Type*)(uintptr_t)0xDEADCAFE;
+		e->data = (void*)(uintptr_t)0xDEADCAFE;
 	}
 
 	// Validate all still-live IDs
@@ -59,7 +59,7 @@ void test_category_safety() {
 		}
 
 		Element* e = &cat.elements.data[id.slot];
-		int stored = (int)(uintptr_t)e->type;
+		int stored = (int)(uintptr_t)e->data;
 		if (stored != ids[i].expected_magic) {
 			fprintf(stderr, "Memory corruption! Expected %x, got %x at slot %u\n",
 				ids[i].expected_magic, stored, id.slot);
@@ -87,13 +87,13 @@ void test_command_stack() {
 		int do_add = (alive_count == 0 || rand() % 2 == 0);
 
 		if (do_add) {
-			Command cmd = {.type = CMD_ADD_ELEMENT};
-			do_command(&cat, &cmd);
+			Command cmd = make_raw_add_command();
+			cmd.do_command(&cat, cmd.data);
 			APPEND(&stack, cmd);
 
-			Element* e = &cat.elements.data[cmd.backup.id.slot];
+			Element* e = &cat.elements.data[((ID*)(cmd.data))->slot];
 			int magic = i ^ 0xA55A1234;
-			e->type = (const Type*)(uintptr_t)magic;
+			e->data = (void*)(uintptr_t)magic;
 
 			ids[i] = (ID_Tracker){
 				.id = e->id,
@@ -109,11 +109,8 @@ void test_command_stack() {
 			// Remove from alive list
 			alive_indices[idx_in_alive] = alive_indices[--alive_count];
 
-			Command cmd = {
-				.type = CMD_DELETE_ELEMENT,
-				.backup = cat.elements.data[tracker->id.slot]
-			};
-			do_command(&cat, &cmd);
+			Command cmd = make_raw_delete_command(tracker->id);
+			cmd.do_command(&cat, cmd.data);
 			APPEND(&stack, cmd);
 
 			tracker->alive = 0;
@@ -150,7 +147,7 @@ void test_command_stack() {
 				exit(1);
 			}
 			Element* e = &cat.elements.data[ids[j].id.slot];
-			int magic = (int)(uintptr_t)e->type;
+			int magic = (int)(uintptr_t)e->data;
 			if (magic != ids[j].expected_magic) {
 				fprintf(stderr, "Corruption at slot %d: expected %x, got %x at step %d\n",
 				        ids[j].id.slot, ids[j].expected_magic, magic, i);
@@ -161,7 +158,8 @@ void test_command_stack() {
 
 	// Undo everything
 	for (int i = stack.len - 1; i >= 0; --i) {
-		undo_command(&cat, &stack.data[i]);
+		Command cmd = stack.data[i];
+		cmd.undo_command(&cat, cmd.data);
 	}
 
 	// Check that everything is clean
@@ -172,7 +170,8 @@ void test_command_stack() {
 		}
 	}
 
-	free(stack.data);
+	// free(stack.data);
+	free_undo_stack(&(UndoStack){.stack=stack});
 	free_category(&cat);
 	printf("Command stack test passed ✅\n");
 	fflush(stdout);
@@ -214,9 +213,9 @@ void test_manual_command_sequence() {
 
 	// Add 3 elements
 	for (int i = 0; i < 3; ++i) {
-		Command c = {.type = CMD_ADD_ELEMENT};
+		Command c = make_raw_add_command();
 		apply_command(&cat, &undo, c);
-		ID id = undo.stack.data[undo.len - 1].backup.id;
+		ID id = *(ID*)(undo.stack.data[undo.len - 1].data);
 		if (i == 0) e0 = id;
 		if (i == 1) e1 = id;
 		if (i == 2) e2 = id;
@@ -233,9 +232,9 @@ void test_manual_command_sequence() {
 
 	// Add a new one (e3), which truncates redo
 	{
-		Command c = {.type = CMD_ADD_ELEMENT};
+		Command c = make_raw_add_command();
 		apply_command(&cat, &undo, c);
-		e3 = undo.stack.data[undo.len - 1].backup.id;
+		e3 = *(ID*)(undo.stack.data[undo.len - 1].data);
 		CHECK_VALID_ID(&cat, e3);
 
 		if (undo.len < undo.stack.len) {
@@ -246,8 +245,7 @@ void test_manual_command_sequence() {
 
 	// Delete e0 explicitly
 	{
-		Command c = {.type = CMD_DELETE_ELEMENT};
-		c.backup = cat.elements.data[e0.slot];
+		Command c = make_raw_delete_command(e0);
 		apply_command(&cat, &undo, c);
 		CHECK_INVALID_ID(&cat, e0);
 	}
@@ -265,7 +263,7 @@ void test_manual_command_sequence() {
 	CHECK_INVALID_ID(&cat, e2);
 	CHECK_INVALID_ID(&cat, e3);
 
-	free(undo.stack.data);
+	free_undo_stack(&undo);
 	free_category(&cat);
 
 	printf("Manual command sequence test passed ✅\n");

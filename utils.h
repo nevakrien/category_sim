@@ -82,6 +82,8 @@ static inline void* null_check(void* p){
       (arr)->data[(arr)->len-1] = elem;\
 }while(0)\
 
+#define POP(arr) ((arr)->data[--(arr)->len])
+
 #define SHRINK_TO_FIT(arr) do{\
     void* new_data = realloc((arr) -> data,sizeof(*(arr) ->data )* (arr)-> len);\
     (arr) -> data = new_data? new_data : (arr) -> data;\
